@@ -1,188 +1,145 @@
 <!DOCTYPE html>
-
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Sistema de Toner</title>
+<title>Dashboard Toner</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
+  margin: 0;
   font-family: Arial;
-  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  background: #0f172a;
   color: white;
-  text-align: center;
 }
 
 .container {
-  width: 350px;
-  margin: auto;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+  padding: 20px;
+}
+
+.card {
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+h2 {
+  margin-top: 0;
 }
 
 input, select, button {
   width: 100%;
-  margin: 8px 0;
   padding: 10px;
-  border-radius: 8px;
+  margin-top: 10px;
+  border-radius: 6px;
   border: none;
 }
 
 button {
-  background: #00c6ff;
+  background: #3b82f6;
+  color: white;
   font-weight: bold;
   cursor: pointer;
 }
 
-.barra {
-  background: #333;
-  height: 20px;
+button:hover {
+  background: #2563eb;
+}
+
+canvas {
+  background: white;
   border-radius: 10px;
 }
-
-.progresso {
-  height: 20px;
-  background: #00ff88;
-  width: 0%;
-}
-
-table {
-  width: 100%;
-  margin-top: 20px;
-  font-size: 12px;
-}
 </style>
-
 </head>
 
 <body>
 
 <div class="container">
-<h2>Calculadora de Toner</h2>
 
-<select id="marca" onchange="carregarModelos()">
-  <option value="">Selecione a marca</option>
-  <option value="kyocera">Kyocera</option>
-  <option value="brother">Brother</option>
-</select>
+  <!-- LADO ESQUERDO -->
+  <div class="card">
+    <h2>📥 Entrada</h2>
 
-<select id="modelo"></select>
+    <select id="modelo">
+      <option value="kyocera3182">Kyocera TK-3182</option>
+      <option value="kyocera3422">Kyocera TK-3422</option>
+      <option value="brother3492">Brother TN-3492</option>
+    </select>
 
-<input type="number" id="peso" placeholder="Peso atual (g)">
+    <input type="number" id="peso" placeholder="Peso (g)">
 
-<button onclick="calcular()">Calcular</button>
+    <button onclick="calcular()">Calcular</button>
 
-<div id="resultado"></div>
+    <h3 id="resultado"></h3>
+  </div>
 
-<div class="barra">
-  <div class="progresso" id="barra"></div>
-</div>
-
-<hr>
-
-<h3>Histórico</h3>
-<table border="1">
-<thead>
-<tr>
-<th>Modelo</th>
-<th>Peso</th>
-<th>%</th>
-<th>Data</th>
-</tr>
-</thead>
-<tbody id="historico"></tbody>
-</table>
+  <!-- LADO DIREITO -->
+  <div class="card">
+    <h2>📊 Histórico</h2>
+    <canvas id="grafico"></canvas>
+  </div>
 
 </div>
 
 <script>
+const API = "https://toner-system.onrender.com";
 
-const API = "http://localhost:3000";
-
-// 🔥 MODELOS FIXOS
-const dados = {
-  kyocera: [
-    { nome: "TK-3182", cheio: 800, vazio: 200 },
-    { nome: "TK-3422", cheio: 800, vazio: 200 }
-  ],
-  brother: [
-    { nome: "TN-3492", cheio: 1100, vazio: 500 }
-  ]
+const modelos = {
+  kyocera3182: { cheio: 800, vazio: 200 },
+  kyocera3422: { cheio: 800, vazio: 200 },
+  brother3492: { cheio: 1100, vazio: 500 }
 };
 
-// carregar modelos por marca
-function carregarModelos() {
-  let marca = document.getElementById("marca").value;
-  let select = document.getElementById("modelo");
+let chart;
 
-  select.innerHTML = "";
-
-  if (!marca) return;
-
-  dados[marca].forEach(m => {
-    let opt = document.createElement("option");
-    opt.value = JSON.stringify(m);
-    opt.innerText = m.nome;
-    select.appendChild(opt);
-  });
-}
-
-// calcular e salvar
 async function calcular() {
-  let peso = parseFloat(document.getElementById("peso").value);
-  let modelo = JSON.parse(document.getElementById("modelo").value);
+  const modelo = document.getElementById("modelo").value;
+  const peso = parseFloat(document.getElementById("peso").value);
 
-  if (isNaN(peso)) {
-    alert("Digite um peso válido!");
-    return;
-  }
-
-  let total = modelo.cheio - modelo.vazio;
-  let porcentagem = ((peso - modelo.vazio) / total) * 100;
-
-  if (porcentagem < 0) porcentagem = 0;
-  if (porcentagem > 100) porcentagem = 100;
+  const dados = modelos[modelo];
+  const porcentagem = ((peso - dados.vazio) / (dados.cheio - dados.vazio)) * 100;
 
   document.getElementById("resultado").innerText =
-    "Toner restante: " + porcentagem.toFixed(2) + "%";
+    porcentagem.toFixed(2) + "%";
 
-  document.getElementById("barra").style.width = porcentagem + "%";
-
-  // salvar no banco
-  await fetch(API + "/pesagem", {
+  await fetch(API + "/historico", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      modelo: modelo.nome,
-      peso,
-      porcentagem
-    })
+    body: JSON.stringify({ modelo, peso, porcentagem })
   });
 
-  carregarHistorico();
+  carregarGrafico();
 }
 
-// histórico
-async function carregarHistorico() {
+async function carregarGrafico() {
   const res = await fetch(API + "/historico");
   const dados = await res.json();
 
-  let tabela = document.getElementById("historico");
-  tabela.innerHTML = "";
+  const labels = dados.map(d => d.modelo);
+  const valores = dados.map(d => d.porcentagem);
 
-  dados.forEach(p => {
-    let row = `
-      <tr>
-        <td>${p.modelo}</td>
-        <td>${p.peso}</td>
-        <td>${p.porcentagem.toFixed(2)}%</td>
-        <td>${new Date(p.data).toLocaleString()}</td>
-      </tr>
-    `;
-    tabela.innerHTML += row;
+  if (chart) chart.destroy();
+
+  const ctx = document.getElementById("grafico");
+
+  chart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "% Toner",
+        data: valores
+      }]
+    }
   });
 }
 
-carregarHistorico();
-
+carregarGrafico();
 </script>
 
 </body>
