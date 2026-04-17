@@ -2,23 +2,62 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Dashboard Toner</title>
+<title>Toner Dashboard Pro</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
+* {
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
   font-family: Arial;
-  background: #0f172a;
-  color: white;
 }
 
-.container {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 20px;
+body {
+  display: flex;
+  background: #0f172a;
+  color: #fff;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 220px;
+  height: 100vh;
+  background: #020617;
   padding: 20px;
+}
+
+.sidebar h2 {
+  margin-bottom: 30px;
+}
+
+.sidebar button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #1e293b;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sidebar button:hover {
+  background: #3b82f6;
+}
+
+/* CONTEÚDO */
+.main {
+  flex: 1;
+  padding: 20px;
+}
+
+/* CARDS */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
 }
 
 .card {
@@ -27,11 +66,8 @@ body {
   border-radius: 12px;
 }
 
-h2 {
-  margin-top: 0;
-}
-
-input, select, button {
+/* FORM */
+input, select {
   width: 100%;
   padding: 10px;
   margin-top: 10px;
@@ -39,31 +75,69 @@ input, select, button {
   border: none;
 }
 
-button {
+button.calc {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
   background: #3b82f6;
+  border: none;
+  border-radius: 6px;
   color: white;
   font-weight: bold;
   cursor: pointer;
 }
 
-button:hover {
-  background: #2563eb;
+/* RESULTADO */
+.resultado {
+  margin-top: 10px;
+  font-size: 22px;
+  color: #38bdf8;
 }
 
-canvas {
-  background: white;
-  border-radius: 10px;
+/* HISTÓRICO */
+.historico {
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 14px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <h2>🖨️ Toner</h2>
+  <button>Dashboard</button>
+  <button>Histórico</button>
+</div>
 
-  <!-- LADO ESQUERDO -->
+<!-- MAIN -->
+<div class="main">
+
+  <!-- CARDS SUPERIORES -->
+  <div class="cards">
+    <div class="card">
+      <h3>Total Registros</h3>
+      <p id="total">0</p>
+    </div>
+
+    <div class="card">
+      <h3>Média Toner</h3>
+      <p id="media">0%</p>
+    </div>
+
+    <div class="card">
+      <h3>Último Valor</h3>
+      <p id="ultimo">0%</p>
+    </div>
+  </div>
+
+  <br>
+
+  <!-- CALCULADORA -->
   <div class="card">
-    <h2>📥 Entrada</h2>
+    <h3>Calcular Toner</h3>
 
     <select id="modelo">
       <option value="kyocera3182">Kyocera TK-3182</option>
@@ -73,15 +147,24 @@ canvas {
 
     <input type="number" id="peso" placeholder="Peso (g)">
 
-    <button onclick="calcular()">Calcular</button>
+    <button class="calc" onclick="calcular()">Calcular</button>
 
-    <h3 id="resultado"></h3>
+    <div class="resultado" id="resultado"></div>
   </div>
 
-  <!-- LADO DIREITO -->
+  <br>
+
+  <!-- GRÁFICO -->
   <div class="card">
-    <h2>📊 Histórico</h2>
     <canvas id="grafico"></canvas>
+  </div>
+
+  <br>
+
+  <!-- HISTÓRICO -->
+  <div class="card">
+    <h3>Histórico</h3>
+    <div id="historico" class="historico"></div>
   </div>
 
 </div>
@@ -101,6 +184,8 @@ async function calcular() {
   const modelo = document.getElementById("modelo").value;
   const peso = parseFloat(document.getElementById("peso").value);
 
+  if (!peso) return alert("Digite o peso");
+
   const dados = modelos[modelo];
   const porcentagem = ((peso - dados.vazio) / (dados.cheio - dados.vazio)) * 100;
 
@@ -113,33 +198,48 @@ async function calcular() {
     body: JSON.stringify({ modelo, peso, porcentagem })
   });
 
-  carregarGrafico();
+  carregar();
 }
 
-async function carregarGrafico() {
+async function carregar() {
   const res = await fetch(API + "/historico");
   const dados = await res.json();
 
-  const labels = dados.map(d => d.modelo);
   const valores = dados.map(d => d.porcentagem);
 
+  // CARDS
+  document.getElementById("total").innerText = dados.length;
+
+  const media = valores.reduce((a,b)=>a+b,0) / (valores.length || 1);
+  document.getElementById("media").innerText = media.toFixed(1) + "%";
+
+  const ultimo = valores[valores.length - 1] || 0;
+  document.getElementById("ultimo").innerText = ultimo.toFixed(1) + "%";
+
+  // HISTÓRICO
+  const hist = document.getElementById("historico");
+  hist.innerHTML = "";
+  dados.slice().reverse().forEach(item => {
+    hist.innerHTML += `<div>${item.modelo} - ${item.porcentagem}%</div>`;
+  });
+
+  // GRÁFICO
   if (chart) chart.destroy();
 
-  const ctx = document.getElementById("grafico");
-
-  chart = new Chart(ctx, {
-    type: "bar",
+  chart = new Chart(document.getElementById("grafico"), {
+    type: "line",
     data: {
-      labels: labels,
+      labels: dados.map(d => d.modelo),
       datasets: [{
         label: "% Toner",
-        data: valores
+        data: valores,
+        tension: 0.3
       }]
     }
   });
 }
 
-carregarGrafico();
+carregar();
 </script>
 
 </body>
