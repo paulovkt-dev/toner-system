@@ -1,143 +1,74 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<title>Toner Dashboard Pro</title>
+  <meta charset="UTF-8">
+  <title>Calculadora de Toner</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      color: white;
+    }
 
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: Arial;
-}
+    .box {
+      background: #1e293b;
+      padding: 25px;
+      border-radius: 12px;
+      width: 350px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
 
-body {
-  display: flex;
-  background: #0f172a;
-  color: #fff;
-}
+    h2 {
+      text-align: center;
+      margin-bottom: 15px;
+    }
 
-/* SIDEBAR */
-.sidebar {
-  width: 220px;
-  height: 100vh;
-  background: #020617;
-  padding: 20px;
-}
+    select, input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+    }
 
-.sidebar h2 {
-  margin-bottom: 30px;
-}
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      background: #3b82f6;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
 
-.sidebar button {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-  background: #1e293b;
-  border: none;
-  color: white;
-  border-radius: 6px;
-  cursor: pointer;
-}
+    button:hover {
+      background: #2563eb;
+    }
 
-.sidebar button:hover {
-  background: #3b82f6;
-}
-
-/* CONTEÚDO */
-.main {
-  flex: 1;
-  padding: 20px;
-}
-
-/* CARDS */
-.cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-}
-
-.card {
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 12px;
-}
-
-/* FORM */
-input, select {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  border-radius: 6px;
-  border: none;
-}
-
-button.calc {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  background: #3b82f6;
-  border: none;
-  border-radius: 6px;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-/* RESULTADO */
-.resultado {
-  margin-top: 10px;
-  font-size: 22px;
-  color: #38bdf8;
-}
-
-/* HISTÓRICO */
-.historico {
-  max-height: 200px;
-  overflow-y: auto;
-  font-size: 14px;
-}
-</style>
+    #resultado {
+      margin-top: 15px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #38bdf8;
+    }
+  </style>
 </head>
 
 <body>
 
-<!-- SIDEBAR -->
-<div class="sidebar">
-  <h2>🖨️ Toner</h2>
-  <button>Dashboard</button>
-  <button>Histórico</button>
-</div>
-
-<!-- MAIN -->
-<div class="main">
-
-  <!-- CARDS SUPERIORES -->
-  <div class="cards">
-    <div class="card">
-      <h3>Total Registros</h3>
-      <p id="total">0</p>
-    </div>
-
-    <div class="card">
-      <h3>Média Toner</h3>
-      <p id="media">0%</p>
-    </div>
-
-    <div class="card">
-      <h3>Último Valor</h3>
-      <p id="ultimo">0%</p>
-    </div>
-  </div>
-
-  <br>
-
-  <!-- CALCULADORA -->
-  <div class="card">
-    <h3>Calcular Toner</h3>
+  <div class="box">
+    <h2>🖨️ Toner</h2>
 
     <select id="modelo">
       <option value="kyocera3182">Kyocera TK-3182</option>
@@ -147,27 +78,10 @@ button.calc {
 
     <input type="number" id="peso" placeholder="Peso (g)">
 
-    <button class="calc" onclick="calcular()">Calcular</button>
+    <button onclick="calcular()">Calcular</button>
 
-    <div class="resultado" id="resultado"></div>
+    <div id="resultado"></div>
   </div>
-
-  <br>
-
-  <!-- GRÁFICO -->
-  <div class="card">
-    <canvas id="grafico"></canvas>
-  </div>
-
-  <br>
-
-  <!-- HISTÓRICO -->
-  <div class="card">
-    <h3>Histórico</h3>
-    <div id="historico" class="historico"></div>
-  </div>
-
-</div>
 
 <script>
 const API = "https://toner-system.onrender.com";
@@ -178,13 +92,14 @@ const modelos = {
   brother3492: { cheio: 1100, vazio: 500 }
 };
 
-let chart;
-
 async function calcular() {
   const modelo = document.getElementById("modelo").value;
   const peso = parseFloat(document.getElementById("peso").value);
 
-  if (!peso) return alert("Digite o peso");
+  if (!peso) {
+    alert("Digite o peso");
+    return;
+  }
 
   const dados = modelos[modelo];
   const porcentagem = ((peso - dados.vazio) / (dados.cheio - dados.vazio)) * 100;
@@ -192,54 +107,13 @@ async function calcular() {
   document.getElementById("resultado").innerText =
     porcentagem.toFixed(2) + "%";
 
+  // ainda salva no banco (mesmo sem mostrar histórico)
   await fetch(API + "/historico", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ modelo, peso, porcentagem })
   });
-
-  carregar();
 }
-
-async function carregar() {
-  const res = await fetch(API + "/historico");
-  const dados = await res.json();
-
-  const valores = dados.map(d => d.porcentagem);
-
-  // CARDS
-  document.getElementById("total").innerText = dados.length;
-
-  const media = valores.reduce((a,b)=>a+b,0) / (valores.length || 1);
-  document.getElementById("media").innerText = media.toFixed(1) + "%";
-
-  const ultimo = valores[valores.length - 1] || 0;
-  document.getElementById("ultimo").innerText = ultimo.toFixed(1) + "%";
-
-  // HISTÓRICO
-  const hist = document.getElementById("historico");
-  hist.innerHTML = "";
-  dados.slice().reverse().forEach(item => {
-    hist.innerHTML += `<div>${item.modelo} - ${item.porcentagem}%</div>`;
-  });
-
-  // GRÁFICO
-  if (chart) chart.destroy();
-
-  chart = new Chart(document.getElementById("grafico"), {
-    type: "line",
-    data: {
-      labels: dados.map(d => d.modelo),
-      datasets: [{
-        label: "% Toner",
-        data: valores,
-        tension: 0.3
-      }]
-    }
-  });
-}
-
-carregar();
 </script>
 
 </body>
